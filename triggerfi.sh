@@ -3,11 +3,11 @@
 # bc other functions require installs, sources.list and update must come first
 
 # variables:
-CONF_DIR=./conf
+CONF_DIR=./config
 OS=$(lsb_release --codename --short)
-PASS=Goodpassword!123
+PASS=PASS=Goodpassword\!123
 grub_user="2oe"
-grub_pass=$(echo -e "$PASS\n$PASS" | grub-mkpasswd-pbkdf2)  # creates encrypted password (same as $PASS)
+grub_pass=$(echo "$PASS\n$PASS" | grub-mkpasswd-pbkdf2 | sed -e 's/Enter password: Reenter password: PBKDF2 hash of your password is //g')  # creates encrypted password (same as $PASS)
 
 # helper functions:
 
@@ -22,13 +22,13 @@ chkPkg() {
 aptCfg() {
   if [ "$OS" = "xenial" ]; then
     cp -p /etc/apt/sources.list /etc/apt/sources.list.bak
-    cp $CONF_DIR/sources.list-$OS
+    cp $CONF_DIR/sources.list-$OS /etc/apt/sources.list
   elif [ "$OS" = "trusty" ]; then
     cp -p /etc/apt/sources.list /etc/apt/sources.list.bak
-    cp $CONF_DIR/sources.list-$OS
+    cp $CONF_DIR/sources.list-$OS /etc/apt/sources.list
   elif [ "$OS" = "jessie" ]; then
     cp -p /etc/apt/sources.list /etc/apt/sources.list.bak
-    cp $CONF_DIR/sources.list-$OS
+    cp $CONF_DIR/sources.list-$OS /etc/apt/sources.list
   else
     echo OS version not recognized. Script only works for Ubuntu 14.04, 16.04, and Debian 8.
   fi
@@ -64,7 +64,7 @@ passwdPol() {
   cp $CONF_DIR/useradd /etc/default/useradd
 }
 
-lightdmPol() {
+greeter() {
   if [ $(chkPkg lightdm) -eq 1 ]; then
     cp -p /etc/lightdm/lightdm.conf /etc/lightdm/lightdm.conf.bak
     cp $CONF_DIR/lightdm.conf /etc/lightdm/lightdm.conf 
@@ -77,6 +77,8 @@ lightdmPol() {
     sed -i 's/^# disable-user-.*/disable-user-list=true/' /etc/gdm3/greeter.dconf-defaults
     sed -i 's/^# disable-restart-.*/disable-restart-buttons=true/' /etc/gdm3/greeter.dconf-defaults
     sed -i 's/^#  AutomaticLoginEnable.*/AutomaticLoginEnable = false/' /etc/gdm3/custom.conf
+  else
+    echo "neither lightdm nor gdm3 are installed" >> error.log
   fi
 }
 
@@ -98,7 +100,6 @@ sysctlPol() {
 
 perms() {
   chmod 640 /etc/shadow
-
 }
 
 firewall() {
@@ -113,10 +114,11 @@ firewall() {
 }
 
 users() {
-  getent passwd | white IFS=: read -r name password uid gid gecos home shell; do
+  getent passwd | while IFS=: read -r name password uid gid gecos home shell; do
     if [ "$uid" -eq 0 ]; then
       # change UID of UID 0 user (non-root)
       if [ "$name" != "root" ]; then
+      echo I think I found root!
         # generates new UID and checks if it is in use
         newUID=$(shuf -i 1000-60000 -n 1)
         while [ $(getent passwd $newUID) -eq 0 ]; do
@@ -127,7 +129,7 @@ users() {
       fi
     elif [ "$uid" -ge 1000 ]; then
       chage -m 7 -M 30 $name
-      echo -e "$PASS\n$PASS" | passwd $name
+      echo "$PASS\n$PASS" | passwd $name
     fi
   done
 }
@@ -167,15 +169,10 @@ unusedFS() {
   done
 }
 
-# 1.1.21 disable automounting
-automount() {
-
-}
 
 # 1.3 Filesystem Integrity Checking
 aideCfg() {
   apt-get install -y aide aide-common
-
 }
 
 # 1.4 Secure Boot
@@ -195,18 +192,17 @@ EOF
 # 1.6 Mandatory Access Control
 # 1.6.2 Configure AppArmor
 
-aptCfg
-autoUpgrade
-passwdPol
-lightdmPol
-sshPol
-sysctlPol
-perms
-firewall
+#aptCfg
+#autoUpgrade
+#passwdPol
+#greeter
+#sshPol
+#sysctlPol
+#perms
+#firewall
 users
-misc
-unusedFS
-boot
-grub
+#misc
+#unusedFS
+#grub
 
 exit 0
