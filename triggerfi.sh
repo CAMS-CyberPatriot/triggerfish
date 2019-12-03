@@ -134,6 +134,13 @@ users() {
   done
 }
 
+delet() {
+  for pkg in john nmap vuze frostwire kismet freeciv minetest mintest-server nikto wireshark zenmap
+  then
+    apt-get purge -y $pkg
+  done
+}
+
 misc() {
   # clear rc.local
   echo "exit 0" > /etc/rc.local
@@ -192,17 +199,17 @@ EOF
 # 1.6 Mandatory Access Control
 # 1.6.2 Configure AppArmor
 
-#aptCfg
-#autoUpgrade
-#passwdPol
-#greeter
-#sshPol
-#sysctlPol
-#perms
-#firewall
+aptCfg
+autoUpgrade
+passwdPol
+greeter
+sshPol
+sysctlPol
+perms
+firewall
 users
-#misc
-#unusedFS
-#grub
+misc
+unusedFS
+grub
 
 exit 0
