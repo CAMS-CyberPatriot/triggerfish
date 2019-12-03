@@ -1,0 +1,44 @@
+MAIL_DIR					/var/mail	# doesn't do anything
+FAILLOG_ENAB		yes		# log failed logins
+LOG_UNKFAIL_ENAB	no
+LOG_OK_LOGINS		yes		# log successful logins
+SYSLOG_SU_ENAB		yes		# log su activity with syslog
+SYSLOG_SG_ENAB		yes
+FTMP_FILE		/var/log/btmp
+SU_NAME			su
+HUSHLOGIN_FILE		.hushlogin
+
+# (minimal) default PATH settings, for superusers and normal users
+ENV_SUPATH		PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV_PATH		PATH=/usr/local/bin:/usr/bin:/bin
+
+# terminal perms
+TTYGROUP		tty
+TTYPERM			0600
+ERASECHAR		0177
+KILLCHAR		025
+UMASK			077		# default file permissions
+
+USERGROUPS_ENAB 	yes		# group matches umask
+
+# password aging controls
+PASS_MAX_DAYS		30
+PASS_MIN_DAYS		7
+PASS_WARN_AGE		5
+
+# min/max for automatic uid selection in useradd
+UID_MIN			1000
+UID_MAX			6000
+
+# min/max for automatic gid selection in groupadd
+GID_MIN			1000
+GID_MAX			60000
+
+ENCRYPT_METHOD 		SHA512		# should match pam configuration
+
+DEFAULT_HOME		yes		# do not require users to have a home directory
+
+# overriden by PAM
+LOGIN_RETRIES		5
+LOGIN_TIMEOUT		60
+CHFN_RESTRICT		rwh
