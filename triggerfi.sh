@@ -1,15 +1,16 @@
 #!/bin/sh
 
-# bc other functions require installs, sources.list and update must come first
-
-# variables:
+# --- variables ---
 CONF_DIR=./config
 OS=$(lsb_release --codename --short)
 PASS=PASS=Goodpassword\!123
 grub_user="2oe"
 grub_pass=$(echo "$PASS\n$PASS" | grub-mkpasswd-pbkdf2 | sed -e 's/Enter password: Reenter password: PBKDF2 hash of your password is //g')  # creates encrypted password (same as $PASS)
+PORTS = "222"     # ports that should be open
+# packages to be deleted
+BAD = "john nmap vuze frostwire kismet freeciv minetest mintest-server nikto wireshark zenmap"
 
-# helper functions:
+# --- helper functions ---
 
 # usage: if [ $(chkPkg $name) -eq 0]; then....
 # returns 1 if installed and 0 if not
@@ -17,8 +18,10 @@ chkPkg() {
   dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -c "ok installed"
 }
 
-# main functions:
+# --- main functions ---
 
+# replaces apt sources.list with proper sources
+# reinstalls coreutils incase they are broken
 aptCfg() {
   if [ "$OS" = "xenial" ]; then
     cp -p /etc/apt/sources.list /etc/apt/sources.list.bak
@@ -37,6 +40,7 @@ aptCfg() {
   apt-get install --reinstall coreutils
 }
 
+# configure automatic upgrades
 autoUpgrade() {
   apt-get install -y unattended-upgrades
   cp -p /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades.bak
@@ -45,6 +49,7 @@ autoUpgrade() {
   cp $CONF_DIR/50auto-upgrades /etc/apt/apt.conf.d/50auto-upgrades
 }
 
+# password policy
 passwdPol() {
   # pam
   apt-get install -y libpam-cracklib
@@ -64,6 +69,8 @@ passwdPol() {
   cp $CONF_DIR/useradd /etc/default/useradd
 }
 
+# greeter (desktop manager) hardening
+# disables guest account, user list, autologin
 greeter() {
   if [ $(chkPkg lightdm) -eq 1 ]; then
     cp -p /etc/lightdm/lightdm.conf /etc/lightdm/lightdm.conf.bak
@@ -82,6 +89,7 @@ greeter() {
   fi
 }
 
+# sshd hardening
 sshPol() {
   if [ $(chkPkg openssh-server) -eq 1 ]; then
     cp -p /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
@@ -91,6 +99,7 @@ sshPol() {
   fi
 }
 
+# kernel hardening
 sysctlPol() {
   cp -p /etc/sysctl.conf /etc/sysctl.conf.bak
   cp $CONF_DIR/sysctl.conf /etc/sysctl.conf
@@ -98,10 +107,12 @@ sysctlPol() {
   sysctl -p
 }
 
+# hardened permissions
 perms() {
   chmod 640 /etc/shadow
 }
 
+# configure ufw
 firewall() {
   apt-get install -y ufw
   yes | ufw reset
@@ -109,10 +120,15 @@ firewall() {
   ufw default allow outgoing
   ufw logging on
   ufw logging high
-  ufw allow 222   # SSH port
+  for p in $PORTS; do
+    ufw allow $p
+  done
   ufw enable
 }
 
+# assigns users with uid 0 a random new uid
+# sets all users' passwords to $PASS
+# sets min/max password age for all users
 users() {
   getent passwd | while IFS=: read -r name password uid gid gecos home shell; do
     if [ "$uid" -eq 0 ]; then
@@ -134,9 +150,10 @@ users() {
   done
 }
 
+# deletes packages in $BAD
 delet() {
-  for pkg in john nmap vuze frostwire kismet freeciv minetest mintest-server nikto wireshark zenmap
-  then
+  for pkg in $BAD
+  do
     apt-get purge -y $pkg
   done
 }
@@ -189,27 +206,19 @@ aideCfg() {
 grub() {
   chown root:root /boot/grub/grub.cfg
   chmod 0400 /boot/grub/grub.cfg
-cat << EOF >> /etc/grub.d/00_header
+
+cat << EOF > /etc/grub.d/40_custom
 set superusers="$grub_user"
 password_pbkdf2 $grub_user $grub_pass
 EOF
+
   update-grub
 }
 
-# 1.6 Mandatory Access Control
-# 1.6.2 Configure AppArmor
-
-aptCfg
-autoUpgrade
-passwdPol
-greeter
-sshPol
-sysctlPol
-perms
-firewall
-users
-misc
-unusedFS
-grub
+# functions in run order
+# bc other functions require installs, sources.list and update must come first
+for func in aptCfg autoUpgrade passwdPol greeter sshPol sysctlPol perms firewall users misc unusedFS grub; do
+  $func
+done
 
 exit 0
