@@ -56,7 +56,7 @@ passwdPol() {
   cp -p /etc/pam.d/common-auth /etc/pam.d/common-auth.bak
   cp -p /etc/pam.d/common-password /etc/pam.d/common-password.bak
   cp $CONF_DIR/common-auth /etc/pam.d/common-auth
-  if [ $(chkPkg libpam-cracklib) -eq 0 ]; then
+  if [ $(chkPkg libpam-cracklib) -eq 1 ]; then
     cp $CONF_DIR/common-password /etc/pam.d/common-password
   else
     echo "libpam-cracklib failed to install, common-password not configured" >> error.log
