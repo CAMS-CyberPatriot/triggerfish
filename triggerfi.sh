@@ -6,9 +6,9 @@ OS=$(lsb_release --codename --short)
 PASS="Goodpassword!123"
 grub_user="2oe"
 grub_pass=$(printf "$PASS\n$PASS" | grub-mkpasswd-pbkdf2 | tr -d '\n' | sed -e 's/Enter password: Reenter password: PBKDF2 hash of your password is //g')  # creates encrypted password (same as $PASS)
-PORTS = "222"     # ports that should be open
+PORTS="222"     # ports that should be open
 # packages to be deleted
-BAD = "john nmap vuze frostwire kismet freeciv minetest mintest-server nikto wireshark zenmap"
+BAD="john nmap vuze frostwire kismet freeciv minetest mintest-server nikto wireshark zenmap"
 
 # --- helper functions ---
 
@@ -110,6 +110,24 @@ sysctlPol() {
 # hardened permissions
 perms() {
   chmod 640 /etc/shadow
+  
+  # interactive users should own their home directory
+  # if system users don't own their home directory, root should
+  getent passwd | while IFS=: read -r name password uid gid gecos home shell; do
+    if [ -d "$home" ]; then
+        if [ "$uid" -ge 1000 ]; then
+            if [ $(stat --format '%u' "$home") -ne "$uid" ]; then
+                chown -R $uid:$gid "$home"
+            fi
+        else
+            if [ $(stat --format '%u' "$home") -ne "$uid" ]; then
+                if [ $(stat --format '%u' "$home") -ne '0' ]; then
+                    chown root:root "$home"
+                fi
+            fi
+        fi
+    fi
+  done
 }
 
 # configure ufw
