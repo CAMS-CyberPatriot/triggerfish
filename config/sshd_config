@@ -1,6 +1,37 @@
 # Package generated configuration file
 # See the sshd_config(5) manpage for details
 
+# DenyUsers > AllowUsers > DenyGroups > AllowGroups
+# ex: If a user is under both DenyUsers and AllowUsers, they will be denied
+# ex: If a user is in AllowUsers and DenyGroups, they will be allowed.
+
+# Whitelist
+# AllowUsers user1,user2
+# AllowGroups group1,group2
+# Blacklist
+# DenyUsers user1,user2
+# DenyGroups group1,group2
+
+
+
+# V-71957
+PermitUserEnvironment no
+# V-72221
+Ciphers aes128-ctr,aes192-ctr,aes256-ctr
+# V-72237
+ClientAliveInterval 600
+ClientAliveCountMax 0
+# V-2249
+IgnoreUserKnownHosts yes
+# V-72253
+MACs hmac-sha2-256,hmac-sha2-512
+# V-72259
+GSSAPIAuthentication no
+# V-72261
+KerberosAuthentication no
+# V-72267
+Compression delayed
+
 # What ports, IPs and protocols we listen for
 Port 222
 # Use these options to restrict which interfaces/protocols sshd will bind to
@@ -13,7 +44,7 @@ HostKey /etc/ssh/ssh_host_dsa_key
 HostKey /etc/ssh/ssh_host_ecdsa_key
 HostKey /etc/ssh/ssh_host_ed25519_key
 #Privilege Separation is turned on for security
-UsePrivilegeSeparation yes
+UsePrivilegeSeparation sandbox
 
 # Lifetime and size of ephemeral version 1 server key
 KeyRegenerationInterval 3600
@@ -24,7 +55,7 @@ SyslogFacility AUTH
 LogLevel VERBOSE 
 
 # Authentication:
-LoginGraceTime 120
+LoginGraceTime 60
 PermitRootLogin no
 StrictModes yes
 MaxAuthTries 5 
@@ -39,8 +70,6 @@ IgnoreRhosts yes
 RhostsRSAAuthentication no
 # similar for protocol version 2
 HostbasedAuthentication no
-# Uncomment if you don't trust ~/.ssh/known_hosts for RhostsRSAAuthentication
-#IgnoreUserKnownHosts yes
 
 # To enable empty passwords, change to yes (NOT RECOMMENDED)
 PermitEmptyPasswords no
@@ -52,17 +81,7 @@ ChallengeResponseAuthentication no
 # Change to no to disable tunnelled clear text passwords
 #PasswordAuthentication yes
 
-# Kerberos options
-#KerberosAuthentication no
-#KerberosGetAFSToken no
-#KerberosOrLocalPasswd yes
-#KerberosTicketCleanup yes
-
-# GSSAPI options
-#GSSAPIAuthentication no
-#GSSAPICleanupCredentials yes
-
-X11Forwarding no 
+X11Forwarding yes
 X11DisplayOffset 10
 PrintMotd no
 PrintLastLog yes
