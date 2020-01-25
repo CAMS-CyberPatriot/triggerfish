@@ -44,24 +44,13 @@ aptCfg() {
 autoUpgrade() {
   apt-get install -y unattended-upgrades
   cp -p /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades.bak
-  cp -p /etc/apt/apt.conf.d/50auto-upgrades /etc/apt/apt.conf.d/50auto-upgrades.bak
+  cp -p /etc/apt/apt.conf.d/50unattended-upgrades /etc/apt/apt.conf.d/50unattended-upgrades.bak
   cp $CONF_DIR/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades
-  cp $CONF_DIR/50auto-upgrades /etc/apt/apt.conf.d/50auto-upgrades
+  cp $CONF_DIR/50unattended-upgrades /etc/apt/apt.conf.d/50unattended-upgrades
 }
 
 # password policy
 passwdPol() {
-  # pam
-  apt-get install -y libpam-cracklib
-  cp -p /etc/pam.d/common-auth /etc/pam.d/common-auth.bak
-  cp -p /etc/pam.d/common-password /etc/pam.d/common-password.bak
-  cp $CONF_DIR/common-auth /etc/pam.d/common-auth
-  if [ $(chkPkg libpam-cracklib) -eq 1 ]; then
-    cp $CONF_DIR/common-password /etc/pam.d/common-password
-  else
-    echo "libpam-cracklib failed to install, common-password not configured" >> error.log
-  fi
-
   cp -p /etc/login.defs /etc/login.defs.bak
   cp $CONF_DIR/login.defs /etc/login.defs
 
@@ -107,29 +96,6 @@ sysctlPol() {
   sysctl -p
 }
 
-# hardened permissions
-perms() {
-  chmod 640 /etc/shadow
-  
-  # interactive users should own their home directory
-  # if system users don't own their home directory, root should
-  getent passwd | while IFS=: read -r name password uid gid gecos home shell; do
-    if [ -d "$home" ]; then
-        if [ "$uid" -ge 1000 ]; then
-            if [ $(stat --format '%u' "$home") -ne "$uid" ]; then
-                chown -R $uid:$gid "$home"
-            fi
-        else
-            if [ $(stat --format '%u' "$home") -ne "$uid" ]; then
-                if [ $(stat --format '%u' "$home") -ne '0' ]; then
-                    chown root:root "$home"
-                fi
-            fi
-        fi
-    fi
-  done
-}
-
 # configure ufw
 firewall() {
   apt-get install -y ufw
@@ -150,17 +116,7 @@ firewall() {
 users() {
   getent passwd | while IFS=: read -r name password uid gid gecos home shell; do
     if [ "$uid" -eq 0 ]; then
-      # change UID of UID 0 user (non-root)
-      if [ "$name" != "root" ]; then
-      echo I think I found root!
-        # generates new UID and checks if it is in use
-        newUID=$(shuf -i 1000-60000 -n 1)
-        while [ $(getent passwd $newUID) -eq 0 ]; do
-          newUID=$(shuf -i 1000-60000 -n 1)
-        done
-        usermod -u $newUID $name    # change UID to newly generate id
-        find / -user 0 -exec chown -h $name {} \;   # take ownership of files created by user with new UID
-      fi
+        passwd -l $name
     elif [ "$uid" -ge 1000 ]; then
       chage -m 7 -M 30 $name
       printf "$PASS\n$PASS" | passwd $name
@@ -196,7 +152,7 @@ cat << EOF > /etc/security/limits.d/custom.conf
 EOF
 
   # 1.1.20 set sticky bit for world-writable directories
-  df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type d -perm -0002 2>/dev/null | xargs chmod a+t
+  #df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type d -perm -0002 2>/dev/null | xargs chmod a+t
 }
 
 # SKIPPED
@@ -227,7 +183,7 @@ grub() {
 
 cat << EOF > /etc/grub.d/40_custom
 #!/bin/sh
-exec tail -n +3 $0
+exec tail -n +3 \$0
 
 set superusers="$grub_user"
 password_pbkdf2 $grub_user $grub_pass
@@ -238,7 +194,7 @@ EOF
 
 # functions in run order
 # bc other functions require installs, sources.list and update must come first
-for func in aptCfg autoUpgrade passwdPol greeter sshPol sysctlPol perms firewall users misc unusedFS grub; do
+for func in aptCfg autoUpgrade passwdPol greeter sshPol sysctlPol firewall users misc unusedFS grub; do
   $func
 done
 
