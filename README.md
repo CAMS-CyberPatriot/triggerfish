@@ -1,3 +1,3 @@
 # triggerfish
 
-linux hardening script
+linux hardening script used for CyberPatriot
