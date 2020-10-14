@@ -7,7 +7,7 @@ PASS="Goodpassword!123"
 # username for grub authentication
 grub_user="2oe"
 # creates encrypted grub password (same as $PASS)
-grub_pass=$(printf "$PASS\n$PASS" | grub-mkpasswd-pbkdf2 | tr -d '\n' | sed -e 's/Enter password: Reenter password: PBKDF2 hash of your password is //g')
+grub_pass=$(printf '%s\n%s' "$PASS" "$PASS" | grub-mkpasswd-pbkdf2 | tr -d '\n' | sed -e 's/Enter password: Reenter password: PBKDF2 hash of your password is //g')
 # ports that should be open
 PORTS="222"
 # packages to be deleted
@@ -28,13 +28,13 @@ chkPkg() {
 aptCfg() {
 	if [ "$OS" = "xenial" ]; then
 		cp -p /etc/apt/sources.list /etc/apt/sources.list.bak
-		cp $CONF_DIR/sources.list-$OS /etc/apt/sources.list
+		cp "$CONF_DIR"/sources.list-"$OS" /etc/apt/sources.list
 	elif [ "$OS" = "trusty" ]; then
 		cp -p /etc/apt/sources.list /etc/apt/sources.list.bak
-		cp $CONF_DIR/sources.list-$OS /etc/apt/sources.list
+		cp "$CONF_DIR"/sources.list-"$OS" /etc/apt/sources.list
 	elif [ "$OS" = "jessie" ]; then
 		cp -p /etc/apt/sources.list /etc/apt/sources.list.bak
-		cp $CONF_DIR/sources.list-$OS /etc/apt/sources.list
+		cp "$CONF_DIR"/sources.list-"$OS" /etc/apt/sources.list
 	else
 		echo OS version not recognized. Script only works for Ubuntu 14.04, 16.04, and Debian 8.
 	fi
@@ -64,10 +64,10 @@ passwdPol() {
 # greeter (desktop manager) hardening
 # disables guest account, user list, autologin
 greeter() {
-	if [ $(chkPkg lightdm) -eq 1 ]; then
+	if [ "$(chkPkg lightdm)" -eq 1 ]; then
 		cp -p /etc/lightdm/lightdm.conf /etc/lightdm/lightdm.conf.bak
 		cp $CONF_DIR/lightdm.conf /etc/lightdm/lightdm.conf
-	elif [ $(chkPkg gdm3) -eq 1 ]; then
+	elif [ "$(chkPkg gdm3)" -eq 1 ]; then
 		cp -p /etc/gdm3/greeter.dconf-defaults /etc/gdm3/greeter.dconf-defaults.bak
 		cp -p /etc/gdm3/custom.conf /etc/gdm3/custom.conf.bak
 		#cp $CONF_DIR/greeter.dconf-defaults /etc/gdm3/greeter.dconf-defaults
@@ -83,7 +83,7 @@ greeter() {
 
 # sshd hardening
 sshPol() {
-	if [ $(chkPkg openssh-server) -eq 1 ]; then
+	if [ "$(chkPkg openssh-server)" -eq 1 ]; then
 		cp -p /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 		cp $CONF_DIR/sshd_config /etc/ssh/sshd_config
 
@@ -117,12 +117,12 @@ firewall() {
 # sets all users' passwords to $PASS
 # sets min/max password age for all users
 users() {
-	getent passwd | while IFS=: read -r name password uid gid gecos home shell; do
+	getent passwd | while IFS=: read -r name _ uid _ _ _ _; do
 		if [ "$uid" -eq 0 ]; then
-				passwd -l $name
+				passwd -l "$name"
 		elif [ "$uid" -ge 1000 ]; then
-			chage -m 7 -M 30 $name
-			printf "$PASS\n$PASS" | passwd $name
+			chage -m 7 -M 30 "$name"
+			printf '%s\n%s' "$PASS" "$PASS" | passwd "$name"
 		fi
 	done
 }
@@ -131,7 +131,7 @@ users() {
 delet() {
 	for pkg in $BAD
 	do
-		apt-get purge -y $pkg
+		apt-get purge -y "$pkg"
 	done
 }
 
